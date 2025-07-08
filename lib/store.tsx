@@ -198,7 +198,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Firestore-dan mahsulotlarni real-time yuklash
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
-      const products = snapshot.docs.map(doc => doc.data());
+      const products = snapshot.docs.map(doc => ({
+        ...(doc.data() as Product),
+        id: doc.id,
+      }));
       dispatch({ type: 'SET_PRODUCTS', payload: products });
     });
     return () => unsubscribe();
@@ -207,7 +210,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Firestore-dan buyurtmalarni real-time yuklash
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'orders'), (snapshot) => {
-      const orders = snapshot.docs.map(doc => doc.data());
+      const orders = snapshot.docs.map(doc => ({
+        ...(doc.data() as Order),
+        id: doc.id,
+      }));
       dispatch({ type: 'SET_ORDERS', payload: orders });
     });
     return () => unsubscribe();
