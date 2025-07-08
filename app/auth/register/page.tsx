@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebaseClient';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebaseClient';
+import { setDoc, doc } from 'firebase/firestore';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -24,7 +26,12 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        createdAt: new Date().toISOString(),
+      });
       router.push('/profile?welcome=1');
     } catch (err: any) {
       setError(err.message);
@@ -37,7 +44,12 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      await setDoc(doc(db, 'users', result.user.uid), {
+        uid: result.user.uid,
+        email: result.user.email,
+        createdAt: new Date().toISOString(),
+      });
       router.push('/profile?welcome=1');
     } catch (err: any) {
       setError('Google orqali ro‘yxatdan o‘tishda xatolik: ' + err.message);

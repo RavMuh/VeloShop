@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,9 @@ import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { Order } from '@/lib/types';
 import Price from '@/components/ui/Price';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/lib/firebaseClient';
+import { addDoc, collection } from 'firebase/firestore';
 
 export default function CheckoutPage() {
   const { state, dispatch } = useStore();
@@ -26,6 +29,16 @@ export default function CheckoutPage() {
     paymentMethod: 'cash' as 'cash' | 'card' | 'transfer'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState('');
+
+  // Get current user
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const total = state.cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const itemCount = state.cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -37,23 +50,35 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
 
-    // Simulate API call
-    setTimeout(() => {
-      const order: Order = {
-        id: Date.now().toString(),
-        ...formData,
-        items: state.cart,
-        total,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      };
+    if (!user) {
+      setError('Buyurtma berish uchun avval tizimga kiring!');
+      setIsSubmitting(false);
+      return;
+    }
 
+    const order: Order = {
+      id: Date.now().toString(),
+      ...formData,
+      items: state.cart,
+      total,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      userId: user.uid,
+      userEmail: user.email,
+    };
+
+    try {
+      await addDoc(collection(db, 'orders'), order);
       dispatch({ type: 'ADD_ORDER', payload: order });
       dispatch({ type: 'CLEAR_CART' });
       setIsSubmitting(false);
       router.push('/checkout/success');
-    }, 2000);
+    } catch (e: any) {
+      setError('Buyurtma saqlashda xatolik: ' + e.message);
+      setIsSubmitting(false);
+    }
   };
 
   if (state.cart.length === 0) {
@@ -218,6 +243,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+                {error && <p className="text-red-500 text-sm">{error}</p>}
                 <Button 
                   type="submit" 
                   size="lg" 

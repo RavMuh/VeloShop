@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Product, CartItem, Order, Filter } from './types';
+import { db } from './firebaseClient';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 interface StoreState {
   cart: CartItem[];
@@ -193,37 +195,34 @@ const StoreContext = createContext<{
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(storeReducer, initialState);
 
-  // Component mount bo'lganda localStorage dan ma'lumotlarni yuklash
+  // Firestore-dan mahsulotlarni real-time yuklash
   useEffect(() => {
-    const savedProducts = loadFromStorage('veloshop_products', null);
-    const savedCart = loadFromStorage('veloshop_cart', []);
-    const savedOrders = loadFromStorage('veloshop_orders', []);
-    const savedDarkMode = loadFromStorage('veloshop_darkMode', false);
+    const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
+      const products = snapshot.docs.map(doc => doc.data());
+      dispatch({ type: 'SET_PRODUCTS', payload: products });
+    });
+    return () => unsubscribe();
+  }, []);
 
-    // Agar localStorage da mahsulotlar bo'lsa, ularni yuklash
-    if (savedProducts && savedProducts.length > 0) {
-      // Yangi mahsulotlar bor-yo'qligini tekshirish
-      const existingIds = savedProducts.map((p: Product) => p.id);
-      const newProducts = initialProducts.filter(p => !existingIds.includes(p.id));
-      
-      if (newProducts.length > 0) {
-        // Yangi mahsulotlarni qo'shish
-        const updatedProducts = [...savedProducts, ...newProducts];
-        dispatch({ type: 'SET_PRODUCTS', payload: updatedProducts });
-      } else {
-        dispatch({ type: 'SET_PRODUCTS', payload: savedProducts });
-      }
-    } else {
-      // Birinchi marta ishga tushganda boshlang'ich ma'lumotlarni saqlash
-      dispatch({ type: 'SET_PRODUCTS', payload: initialProducts });
-    }
+  // Firestore-dan buyurtmalarni real-time yuklash
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const orders = snapshot.docs.map(doc => doc.data());
+      dispatch({ type: 'SET_ORDERS', payload: orders });
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Boshqa ma'lumotlarni localStorage dan yuklash
+  useEffect(() => {
+    // const savedProducts = loadFromStorage('veloshop_products', null); // endi kerak emas
+    const savedCart = loadFromStorage('veloshop_cart', []);
+    // const savedOrders = loadFromStorage('veloshop_orders', []); // endi kerak emas
+    const savedDarkMode = loadFromStorage('veloshop_darkMode', false);
 
     // Boshqa ma'lumotlarni yuklash
     if (savedCart.length > 0) {
       dispatch({ type: 'SET_CART', payload: savedCart });
-    }
-    if (savedOrders.length > 0) {
-      dispatch({ type: 'SET_ORDERS', payload: savedOrders });
     }
     if (savedDarkMode) {
       dispatch({ type: 'TOGGLE_DARK_MODE' });
@@ -232,16 +231,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // State o'zgarganda localStorage ga saqlash
   useEffect(() => {
-    saveToStorage('veloshop_products', state.products);
-  }, [state.products]);
+    // saveToStorage('veloshop_products', state.products); // endi kerak emas
+    // saveToStorage('veloshop_orders', state.orders); // endi kerak emas
+  }, [state.products, state.orders]);
 
   useEffect(() => {
     saveToStorage('veloshop_cart', state.cart);
   }, [state.cart]);
-
-  useEffect(() => {
-    saveToStorage('veloshop_orders', state.orders);
-  }, [state.orders]);
 
   useEffect(() => {
     saveToStorage('veloshop_darkMode', state.darkMode);

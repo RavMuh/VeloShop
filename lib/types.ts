@@ -46,6 +46,8 @@ export interface Order {
   paymentMethod: 'cash' | 'card' | 'transfer';
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered';
   createdAt: string;
+  userId: string; // Firebase Auth UID
+  userEmail: string; // User email
 }
 
 export interface Filter {
