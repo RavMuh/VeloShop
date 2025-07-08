@@ -47,7 +47,7 @@ export default function ProductsPage() {
     }
 
     // Apply URL category filter
-    const categoryParam = searchParams.get('category');
+    const categoryParam = searchParams ? searchParams.get('category') : null;
     if (categoryParam) {
       filtered = filtered.filter(product => product.category.id === categoryParam);
     }
