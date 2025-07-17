@@ -197,12 +197,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Firestore-dan mahsulotlarni real-time yuklash
   useEffect(() => {
+    // const savedProducts = loadFromStorage('veloshop_products', null); // endi kerak emas
+    let savedCart = loadFromStorage('veloshop_cart', []);
+    // const savedOrders = loadFromStorage('veloshop_orders', []); // endi kerak emas
+    let savedDarkMode = loadFromStorage('veloshop_darkMode', false);
+
+    // cart validatsiyasi
+    if (!Array.isArray(savedCart)) {
+      savedCart = [];
+    }
+    // darkMode validatsiyasi
+    if (typeof savedDarkMode !== 'boolean') {
+      savedDarkMode = false;
+    }
+
+    if (savedCart.length > 0) {
+      dispatch({ type: 'SET_CART', payload: savedCart });
+    }
+    if (savedDarkMode) {
+      dispatch({ type: 'TOGGLE_DARK_MODE' });
+    }
+  }, []);
+
+  // Firestore snapshot bo'sh bo'lsa, initialProducts ni saqlash
+  useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
       const products = snapshot.docs.map(doc => ({
         ...(doc.data() as Product),
         id: doc.id,
       }));
-      dispatch({ type: 'SET_PRODUCTS', payload: products });
+      if (products.length > 0) {
+        dispatch({ type: 'SET_PRODUCTS', payload: products });
+      } else {
+        dispatch({ type: 'SET_PRODUCTS', payload: initialProducts });
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -222,17 +250,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Boshqa ma'lumotlarni localStorage dan yuklash
   useEffect(() => {
     // const savedProducts = loadFromStorage('veloshop_products', null); // endi kerak emas
-    const savedCart = loadFromStorage('veloshop_cart', []);
+    // const savedCart = loadFromStorage('veloshop_cart', []);
     // const savedOrders = loadFromStorage('veloshop_orders', []); // endi kerak emas
-    const savedDarkMode = loadFromStorage('veloshop_darkMode', false);
+    // const savedDarkMode = loadFromStorage('veloshop_darkMode', false);
 
     // Boshqa ma'lumotlarni yuklash
-    if (savedCart.length > 0) {
-      dispatch({ type: 'SET_CART', payload: savedCart });
-    }
-    if (savedDarkMode) {
-      dispatch({ type: 'TOGGLE_DARK_MODE' });
-    }
+    // if (savedCart.length > 0) {
+    //   dispatch({ type: 'SET_CART', payload: savedCart });
+    // }
+    // if (savedDarkMode) {
+    //   dispatch({ type: 'TOGGLE_DARK_MODE' });
+    // }
   }, []);
 
   // State o'zgarganda localStorage ga saqlash
